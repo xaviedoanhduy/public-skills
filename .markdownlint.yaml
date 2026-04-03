@@ -1,0 +1,8 @@
+# Markdownlint configuration for trobz/public-skills
+default: true
+
+# Line length — impractical for documentation-heavy repos
+MD013: false
+
+# Inline HTML — command files intentionally use <arguments> and similar tags
+MD033: false

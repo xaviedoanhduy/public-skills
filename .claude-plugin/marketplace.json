@@ -1,0 +1,31 @@
+{
+  "name": "trobz-public-skills",
+  "owner": {
+    "name": "Trobz"
+  },
+  "metadata": {
+    "description": "Trobz public skills marketplace for code agents",
+    "version": "0.1.0",
+    "pluginRoot": "./plugins",
+    "repository": "git@github.com:trobz/public-skills.git"
+  },
+  "plugins": [
+    {
+      "name": "odoo",
+      "source": "./plugins/odoo",
+      "description": "Odoo data inspection and querying toolkit using odooly CLI",
+      "version": "0.1.0",
+      "author": {
+        "name": "Trobz"
+      },
+      "category": "development",
+      "keywords": [
+        "odoo",
+        "odooly",
+        "query",
+        "inspect",
+        "data"
+      ]
+    }
+  ]
+}

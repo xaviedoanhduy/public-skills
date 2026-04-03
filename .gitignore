@@ -1,0 +1,61 @@
+# Claude Code
+.claude/settings.local.json
+.claude/cache/
+.claude/logs/
+
+# Plugin installation cache
+.plugin-cache/
+.claude-plugin-cache/
+
+# Node modules
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+yarn.lock
+
+# Build outputs
+dist/
+build/
+*.js.map
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# OS files
+Thumbs.db
+Desktop.ini
+
+# Temporary files
+*.tmp
+*.temp
+*.log
+
+# Test coverage
+coverage/
+.nyc_output/
+
+# Python (if used)
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+venv/
+env/
+
+# Backup files
+*.bak
+*.backup
+plans/
+.claude/

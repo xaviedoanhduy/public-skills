@@ -1,0 +1,305 @@
+---
+name: odooly
+description: Inspect and query data on Odoo objects using the odooly CLI. Use when the user mentions odooly explicitly, asks to connect to an Odoo instance/environment, or asks to query, inspect, search, read, list, or fetch data from an Odoo database. Also use when the user asks to copy product images between Odoo instances, or to list installed/available modules from an instance or environment. Trigger phrases include "connect to instance X", "in instance X list/show/find ...", "on ENV check ...", "query ENV for ...", "copy product images between X and Y", "sync images from X to Y", "list modules on ENV", "show installed modules in X", "which modules are installed on Y", "list modules from instance Z".
+allowed-tools: Bash(odooly:*), Bash(python*:*), Question
+---
+
+<!-- markdownlint-disable MD024 -->
+
+# Odooly Skill
+
+Query and inspect data on Odoo objects using the `odooly` CLI.
+
+## Command Usage
+
+```text
+/odoo:odooly [query description or model name]
+```
+
+**Parameters:**
+
+- `$ARGUMENTS`: Free-text description of what to query, or a model name directly.
+
+## Configuration
+
+- `odooly` must be available in `$PATH`
+- Configuration file: `~/odooly.ini`
+- Use `--env` to select a specific environment section from the config
+
+### List available environments
+
+```bash
+odooly -c ~/odooly.ini --list
+```
+
+### odooly.ini Configuration File Format
+
+The `~/odooly.ini` file uses INI format with one section per Odoo instance/environment. Each section defines the connection parameters for that environment.
+
+**Example `~/odooly.ini`:**
+
+```ini
+[staging]
+scheme = https
+host = HTTP_AUTH_USER:HTTP_AUTH_PASSWORD@project-staging.trobz.com
+port = 443
+username = admin
+password = ADMIN_PASSWORD
+database = project_staging
+protocol = jsonrpc
+
+[production]
+scheme = https
+host = HTTP_AUTH_USER:HTTP_AUTH_PASSWORD@project-production.trobz.com
+port = 443
+username = admin
+password = ADMIN_PASSWORD
+database = project_production
+protocol = jsonrpc
+```
+
+**Configuration Parameters:**
+
+| Parameter | Description | Example |
+|-----------|-------------|---------|
+| `scheme` | Connection protocol | `https` or `http` |
+| `host` | Odoo server hostname (may include HTTP auth) | `user:pass@odoo.example.com` |
+| `port` | Server port | `443` (HTTPS), `8069` (local Odoo) |
+| `username` | Odoo username | `admin` |
+| `password` | Odoo user password or API key | `your_password` |
+| `database` | Database name | `company_production` |
+| `protocol` | Odoo RPC protocol | `jsonrpc` (standard) |
+
+**Notes:**
+
+- The section name (e.g., `[staging]`, `[production]`) is the environment name used with `--env`
+- For Odoo.sh or instances with HTTP authentication, include credentials in the `host` field
+- Keep `~/odooly.ini` secure as it contains sensitive credentials
+
+## Workflow
+
+### 1. Understand the Request
+
+- If `$ARGUMENTS` is provided, parse it to determine the target model, fields, and search criteria.
+- Otherwise, ask the user what they want to query using the `Question` tool.
+
+### 2. Determine the Environment
+
+The user may refer to an environment/instance using various phrasings:
+
+- "connect to **production** and list partners"
+- "in instance **staging** show sale orders"
+- "on **demo** find products"
+- "query **prod** for invoices"
+
+Extract the environment name from these patterns and use `--env <section>`.
+
+- If the user specifies an environment/instance name, use `--env <section>`.
+- If unsure which environments exist or the name doesn't match, list them first:
+
+  ```bash
+  odooly -c ~/odooly.ini --list
+  ```
+
+- If only one environment exists or the user doesn't specify, omit `--env`.
+
+### 3. Build the Odooly Command
+
+Construct the command using these parameters:
+
+| Flag | Purpose | Example |
+|------|---------|---------|
+| `-c ~/odooly.ini` | Config file | Always include |
+| `--env ENV` | Environment section | `--env production` |
+| `-m MODEL` | Odoo model to query | `-m res.partner` |
+| `-f FIELD` | Fields to return (repeatable) | `-f name -f email` |
+| `-v` | Verbose output | Add when user wants details |
+
+**Search terms and domains** are passed as positional arguments after the options.
+
+### 4. Command Patterns
+
+**Search by term:**
+
+```bash
+odooly -c ~/odooly.ini -m res.partner -f name -f email "John"
+```
+
+**Search by ID:**
+
+```bash
+odooly -c ~/odooly.ini -m res.partner -f name -f email 42
+```
+
+**Search by domain (Odoo domain syntax):**
+
+```bash
+odooly -c ~/odooly.ini -m sale.order -f name -f state -f partner_id "state=sale"
+```
+
+**Multiple search terms:**
+
+```bash
+odooly -c ~/odooly.ini -m res.partner -f name "is_company=True" "country_id.code=VN"
+```
+
+**List all fields of a model (verbose, no filter):**
+
+```bash
+odooly -c ~/odooly.ini -m res.partner -v
+```
+
+**Query a specific instance/environment:**
+
+```bash
+# "connect to production and list partners"
+odooly -c ~/odooly.ini --env production -m res.partner -f name -f email
+
+# "in instance staging show sale orders in state done"
+odooly -c ~/odooly.ini --env staging -m sale.order -f name -f state "state=done"
+```
+
+**Interactive session:**
+
+```bash
+odooly -c ~/odooly.ini --env production -i
+```
+
+### 5. Execute and Report
+
+- Run the constructed command.
+- Present the results to the user in a readable format.
+- If the command fails, check:
+  - Is `odooly` installed? (`which odooly`)
+  - Does `~/odooly.ini` exist?
+  - Is the environment section valid? (`odooly -c ~/odooly.ini --list`)
+
+## Model Name Mapping
+
+When the user refers to Odoo concepts in natural language, map them to the correct model:
+
+| User says | Model |
+|-----------|-------|
+| partners, contacts, customers | `res.partner` |
+| users | `res.users` |
+| products | `product.product` |
+| product templates | `product.template` |
+| sale orders, sales, quotations | `sale.order` |
+| sale order lines | `sale.order.line` |
+| purchase orders | `purchase.order` |
+| invoices, bills | `account.move` |
+| invoice lines | `account.move.line` |
+| employees | `hr.employee` |
+| leads, opportunities | `crm.lead` |
+| projects | `project.project` |
+| tasks | `project.task` |
+| stock moves | `stock.move` |
+| pickings, transfers | `stock.picking` |
+| companies | `res.company` |
+| currencies | `res.currency` |
+| countries | `res.country` |
+
+## Important Guidelines
+
+- Always include `-c ~/odooly.ini` in every command.
+- Use `-f` to restrict output to relevant fields only; avoid dumping all fields unless the user asks for it.
+- When the user asks for a specific record by name, pass the name as a positional search term.
+- When the user asks for records matching conditions, translate to Odoo domain syntax as positional arguments (e.g. `"state=done"` `"partner_id.name=Trobz"`).
+- For numeric IDs, pass them directly as positional arguments.
+- Present command to the user before executing so they can confirm or adjust.
+
+## List Modules from an Instance
+
+When the user asks to list modules from an Odoo instance or environment (e.g. "list installed modules on production", "which modules are on staging", "show me the modules from instance X"), use the bundled script at `scripts/list_modules.py` (relative to this skill's directory). **Do not use plain `odooly` commands for this — always use `list_modules.py`.**
+
+### Usage
+
+```bash
+python scripts/list_modules.py -c ~/odooly.ini --env ENV [OPTIONS]
+```
+
+### Options
+
+| Flag | Purpose | Default |
+|------|---------|---------|
+| `-c`, `--config` | Config file path | `odooly.ini` |
+| `--env` | Environment name (required) | — |
+| `--installed` / `--no-installed` | Filter installed modules only | `--installed` |
+| `--include-core` | Include core CE/EE modules | `False` |
+| `--format table\|csv` | Output format | `table` |
+| `--columns` | Comma-separated columns to display | `module,state,repo,description` |
+| `--project-dir` | Local project dir for repo detection and CLOC | — |
+
+**Available columns:** `module`, `state`, `repo`, `description`, `version`, `author`, `website`, `cloc`
+
+### Workflow
+
+1. Extract the environment name from the user's request.
+2. If unsure which environments exist, list them first: `odooly -c ~/odooly.ini --list`
+3. Run the script with sensible defaults (installed non-core modules in table format).
+4. If the user wants core modules too, add `--include-core`.
+5. If the user wants CSV output or specific columns, adjust `--format` and `--columns`.
+6. If the user provides a local project directory, pass `--project-dir` to get repo detection and CLOC counts.
+
+### Examples
+
+```bash
+# List installed non-core modules (default)
+python scripts/list_modules.py -c ~/odooly.ini --env production
+
+# Include core Odoo CE/EE modules
+python scripts/list_modules.py -c ~/odooly.ini --env staging --include-core
+
+# All modules regardless of install state
+python scripts/list_modules.py -c ~/odooly.ini --env production --no-installed
+
+# CSV output with version info
+python scripts/list_modules.py -c ~/odooly.ini --env production --format csv --columns module,version,state
+
+# With repo detection and CLOC from local project
+python scripts/list_modules.py -c ~/odooly.ini --env production --project-dir ~/code/myproject --format csv --columns repo,module,version,cloc
+```
+
+## Copy Product Images Between Instances
+
+When the user asks to copy product images between two Odoo instances (e.g. "copy product images between instance X and instance Y"), use the bundled script at `scripts/copy_product_images.py` (relative to this skill's directory).
+
+### Usage
+
+```bash
+python scripts/copy_product_images.py -c ~/odooly.ini --env-from SOURCE_ENV --env-to DEST_ENV [OPTIONS]
+```
+
+### Options
+
+| Flag | Purpose | Example |
+|------|---------|---------|
+| `-c`, `--config` | Config file path (default: odooly.ini) | `-c ~/odooly.ini` |
+| `--env-from` | Source environment (required) | `--env-from production` |
+| `--env-to` | Destination environment (required) | `--env-to staging` |
+| `--product-template-id` | Copy a single product by ID | `--product-template-id 42` |
+| `--domain` | Custom domain filter as JSON | `--domain '[["categ_id.name", "=", "Furniture"]]'` |
+| `--dry-run` | Preview what would be copied | `--dry-run` |
+
+### Workflow
+
+1. Extract the source and destination environment names from the user's request.
+2. If unsure which environments exist, list them first: `odooly -c ~/odooly.ini --list`
+3. Always run with `--dry-run` first and show the summary to the user.
+4. After user confirmation, run without `--dry-run` to perform the actual copy.
+
+### Examples
+
+```bash
+# Dry-run: preview copying all images from production to staging
+python scripts/copy_product_images.py -c ~/odooly.ini --env-from production --env-to staging --dry-run
+
+# Copy all product images
+python scripts/copy_product_images.py -c ~/odooly.ini --env-from production --env-to staging
+
+# Copy a single product image
+python scripts/copy_product_images.py -c ~/odooly.ini --env-from production --env-to staging --product-template-id 42
+
+# Copy with a custom domain filter
+python scripts/copy_product_images.py -c ~/odooly.ini --env-from production --env-to staging --domain '[["categ_id.name", "=", "Furniture"]]'
+```
